@@ -45,12 +45,15 @@ async fn handler(tele: Telegram, placeholder_text: &str, system_prompt: &str, he
         } else if text.eq_ignore_ascii_case("/start") {
             _ = tele.send_message(chat_id, help_mesg);
             set(&chat_id.to_string(), json!(true), None);
-            log::info!("Started converstion for {}", chat_id);
+            log::info!("Started conversation for {}", chat_id);
 
         } else if text.eq_ignore_ascii_case("/restart") {
             _ = tele.send_message(chat_id, "Ok, I am starting a new conversation.");
             set(&chat_id.to_string(), json!(true), None);
-            log::info!("Restarted converstion for {}", chat_id);
+            log::info!("Restarted conversation for {}", chat_id);
+
+        } else if text.eq_ignore_ascii_case("/chats") {
+            handle_chats(tele.clone(), chat_id).await;
 
         } else {
             let placeholder = tele
@@ -72,10 +75,27 @@ async fn handler(tele: Telegram, placeholder_text: &str, system_prompt: &str, he
                     _ = tele.edit_message_text(chat_id, placeholder.id, r.choice);
                 }
                 Err(e) => {
-                    _ = tele.edit_message_text(chat_id, placeholder.id, "Sorry, an error has occured. Please try again later!");
+                    _ = tele.edit_message_text(chat_id, placeholder.id, "Sorry, an error has occurred. Please try again later!");
                     log::error!("OpenAI returns error: {}", e);
                 }
             }
         }
     }
+}
+
+async fn handle_chats(tele: Telegram, chat_id: ChatId) {
+    // Получаем список чатов бота с пользователями
+    let chats = tele.get_chat_administrators(chat_id).unwrap();
+
+    // Формируем сообщение с информацией о чатах
+    let mut message = String::new();
+    for chat in chats {
+        message.push_str(&format!("Chat ID: {}\n", chat.id));
+        message.push_str(&format!("Title: {}\n", chat.title));
+        message.push_str(&format!("Type: {}\n", chat.chat_type));
+        message.push_str("\n");
+    }
+
+    // Отправляем сообщение с информацией о чатах
+    tele.send_message(chat_id, message).unwrap();
 }
